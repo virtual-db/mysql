@@ -5,11 +5,6 @@
 # All dependencies are resolved from their published module versions; no local
 # source replacements or go.work files are needed.
 #
-# Build args:
-#   GIT_AUTH_TOKEN  — passed as a BuildKit secret for fetching any private Go
-#                     modules (AnqorDX/dispatch, AnqorDX/pipeline) during
-#                     go mod download. Supplied by the CI workflow.
-#
 # Runtime environment variables:
 #   VDB_LISTEN_ADDR      — address:port the server listens on (default :3306)
 #   VDB_DB_NAME          — database name exposed to connecting clients
@@ -23,21 +18,13 @@
 # -----------------------------------------------------------------------------
 FROM golang:1.23-alpine AS builder
 
-RUN apk add --no-cache git
-
 WORKDIR /build
-
-# Configure git to use the auth token for all github.com requests so that
-# go mod download can fetch private modules (AnqorDX/dispatch, AnqorDX/pipeline).
-# The token is mounted as a BuildKit secret and never written to any image layer.
-RUN --mount=type=secret,id=GIT_AUTH_TOKEN \
-    git config --global url."https://x-access-token:$(cat /run/secrets/GIT_AUTH_TOKEN)@github.com/".insteadOf "https://github.com/"
 
 # Copy only the module files first so Docker can cache the download layer
 # independently of source changes.
 COPY go.mod go.sum ./
 
-RUN GOPRIVATE=github.com/AnqorDX go mod download
+RUN go mod download
 
 # Copy source and build the binary.
 COPY . .

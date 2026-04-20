@@ -9,13 +9,6 @@
 #   - Full semver:     ghcr.io/virtual-db/mysql:v0.0.1-alpha.2
 #   - Major.minor:     ghcr.io/virtual-db/mysql:v0.0  (stable releases only)
 #   - latest:          ghcr.io/virtual-db/mysql:latest (stable releases only)
-#
-# Required repository secret:
-#   GO_PRIVATE_TOKEN — a GitHub PAT with read access to AnqorDX/dispatch and
-#                      AnqorDX/pipeline. Used inside the Docker build to fetch
-#                      those private Go modules via go mod download.
-#                      If both repos are public this secret is still required
-#                      but its value can be the default GITHUB_TOKEN.
 # =============================================================================
 
 name: Publish Docker image to GHCR
@@ -70,10 +63,6 @@ jobs:
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
-          # Pass the PAT as a BuildKit secret so git can fetch private Go
-          # modules inside the build. The secret is never written to any layer.
-          secrets: |
-            GIT_AUTH_TOKEN=${{ secrets.GO_PRIVATE_TOKEN }}
           # Cache layers in the GHCR cache to speed up subsequent builds.
           cache-from: type=registry,ref=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:buildcache
           cache-to: type=registry,ref=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:buildcache,mode=max

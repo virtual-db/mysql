@@ -5,7 +5,7 @@ import (
 	"os"
 
 	core "github.com/virtual-db/vdb-core"
-	mysqldriver "github.com/virtual-db/vdb-mysql-driver"
+	mysqldriver "github.com/virtual-db/mysql-driver"
 )
 
 func main() {

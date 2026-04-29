@@ -52,7 +52,7 @@ mysql -h 127.0.0.1 -P 3306 -u myuser -pmypassword myapp
 | Method | Instructions |
 |---|---|
 | Pre-built binary (linux/amd64) | [Download from Releases](https://github.com/virtual-db/mysql/releases) |
-| Docker | [Building a Docker image](docs/installation.md#docker) |
+| Docker (official image) | `docker pull ghcr.io/virtual-db/mysql:latest` — see [Docker usage](docs/installation.md#docker) |
 | Build from source | [Build instructions](docs/installation.md#build-from-source) |
 
 ---

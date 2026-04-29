@@ -3,8 +3,8 @@ module github.com/virtual-db/mysql
 go 1.23.3
 
 require (
-	github.com/virtual-db/core v0.0.1-alpha.2
-	github.com/virtual-db/mysql-driver v0.0.1-alpha.2
+	github.com/virtual-db/core v0.0.1-alpha.3
+	github.com/virtual-db/mysql-driver v0.0.1-alpha.3
 )
 
 require (

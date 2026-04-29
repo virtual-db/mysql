@@ -18,31 +18,28 @@ To pin to a specific version, replace `latest/download` with `download/v0.x.x`.
 
 ## Docker
 
-An official image is not yet published. Build one locally from the included `Dockerfile`.
+Official multi-arch images (`linux/amd64`, `linux/arm64`) are published to the
+GitHub Container Registry on every release.
 
-### Build from the repository
-
-```sh
-git clone https://github.com/virtual-db/mysql
-cd mysql
-docker build -t vdb-mysql .
-```
-
-### Build without cloning
-
-```dockerfile
-FROM golang:1.23-alpine AS builder
-RUN CGO_ENABLED=0 go install github.com/virtual-db/mysql@latest
-
-FROM alpine:3.20
-RUN apk add --no-cache ca-certificates tzdata
-COPY --from=builder /go/bin/mysql /usr/local/bin/vdb-mysql
-EXPOSE 3306
-ENTRYPOINT ["/usr/local/bin/vdb-mysql"]
-```
+### Pull the image
 
 ```sh
-docker build -t vdb-mysql -f Dockerfile.custom .
+# Latest stable release
+docker pull ghcr.io/virtual-db/mysql:latest
+
+# Pin to a specific release
+docker pull ghcr.io/virtual-db/mysql:v0.0.1-alpha.3
+```
+
+### Run with Docker
+
+```sh
+docker run --rm \
+  -e VDB_SOURCE_DSN="vdb_user:secret@tcp(db.internal:3306)/myapp" \
+  -e VDB_AUTH_SOURCE_ADDR="db.internal:3306" \
+  -e VDB_DB_NAME="myapp" \
+  -p 3306:3306 \
+  ghcr.io/virtual-db/mysql:latest
 ```
 
 ### Docker Compose
@@ -50,7 +47,7 @@ docker build -t vdb-mysql -f Dockerfile.custom .
 ```yaml
 services:
   vdb:
-    image: vdb-mysql
+    image: ghcr.io/virtual-db/mysql:latest
     restart: unless-stopped
     environment:
       VDB_LISTEN_ADDR: ":3306"
@@ -63,6 +60,16 @@ services:
 
 ```sh
 docker compose up -d
+```
+
+### Build the image locally
+
+If you need to build the image yourself (e.g. to test local changes):
+
+```sh
+git clone https://github.com/virtual-db/mysql
+cd mysql
+docker build -t vdb-mysql .
 ```
 
 ---

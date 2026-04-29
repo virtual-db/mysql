@@ -1,141 +1,25 @@
 # vdb-mysql
 
-A MySQL-protocol proxy that sits in front of your existing MySQL database, intercepts every query and write, and routes them through a plugin layer — without touching the source data.
+**VirtualDB** is a MySQL-compatible proxy that sits between your application and your MySQL database. It intercepts every query and write, routes them through a programmable plugin layer, and returns results — without ever modifying the source.
+
+Reads come from your real database. Writes are captured in an in-memory delta and reflected back to your application. **Nothing is written to the source.**
+
+> **Status**: Early alpha (`v0.0.1-alpha`). Not recommended for production without a thorough evaluation. See [Known Limitations](docs/limitations.md).
+
+---
+
+## What it's for
+
+- Virtualizing or transforming data without changing your schema or application
+- Overlaying synthetic or sanitized rows on top of live data (e.g. for testing)
+- Observing every read and write through a plugin pipeline
+- Capturing change events without modifying the source database
 
 ---
 
 ## Quick Start
 
-> **Note**: An official Docker image is planned but has not been published yet. In the meantime, you can [build your own Docker image](#building-your-own-docker-image) or use a [pre-built binary](#pre-built-binary).
-
-The example below shows how vdb-mysql can be deployed with Docker Compose once an image is available.
-
-> **Prerequisite**: vdb-mysql needs a dedicated read-only MySQL account on your source database to fetch schema and row data. See [Source Database Setup](#source-database-setup) for the one-time SQL needed to create it.
-
-**1. Create a `docker-compose.yml`**
-
-```yaml
-services:
-
-  vdb:
-    image: ghcr.io/virtual-db/mysql:latest
-    restart: unless-stopped
-    environment:
-      VDB_LISTEN_ADDR: ":3306"
-      VDB_DB_NAME: myapp
-      VDB_SOURCE_DSN: "vdb_user:<vdb-user-password>@tcp(<your-mysql-host>:3306)/myapp"
-      VDB_AUTH_SOURCE_ADDR: "<your-mysql-host>:3306"
-    ports:
-      - "3306:3306"
-```
-
-**2. Start**
-
-```
-docker compose up -d
-```
-
-**3. Connect**
-
-```
-mysql -h 127.0.0.1 -P 3306 -u <your-existing-user> -p<password> myapp
-```
-
-Your application now connects to vdb-mysql on port 3306 exactly as it would connect to MySQL directly. The source database remains on its original port and is not exposed to your application.
-
----
-
-## Requirements
-
-- **Source database**: MySQL 8.x
-- **Docker**: 20.10 or later (for container deployment)
-- **Go**: 1.23.3 or later (only if building from source)
-- **Network**: vdb-mysql must have TCP access to the source MySQL server
-
----
-
-## Getting vdb-mysql
-
-### Docker image
-
-> **Coming soon**: An official Docker image is planned for a future release. It will be published to the GitHub Container Registry at `ghcr.io/virtual-db/mysql`. Until then, you can [build your own Docker image](#building-your-own-docker-image).
-
-### Pre-built binary
-
-Linux/amd64 binaries are attached to every tagged [release](https://github.com/virtual-db/mysql/releases):
-
-```
-curl -Lo vdb-mysql https://github.com/virtual-db/mysql/releases/latest/download/vdb-mysql-linux-amd64
-chmod +x vdb-mysql
-```
-
-### Building from source
-
-All dependencies are published to the public Go module proxy:
-
-```
-git clone https://github.com/virtual-db/mysql
-cd mysql
-CGO_ENABLED=0 go build -trimpath -o vdb-mysql .
-```
-
-### Building your own Docker image
-
-```dockerfile
-FROM golang:1.23-alpine AS builder
-RUN CGO_ENABLED=0 go install github.com/virtual-db/mysql@latest
-
-FROM alpine:3.20
-RUN apk add --no-cache ca-certificates
-COPY --from=builder /go/bin/mysql /usr/local/bin/vdb-mysql
-EXPOSE 3306
-ENTRYPOINT ["/usr/local/bin/vdb-mysql"]
-```
-
----
-
-## Connecting
-
-vdb-mysql speaks standard MySQL protocol. Any client that works with MySQL 8.x works with vdb-mysql. Point it at `VDB_LISTEN_ADDR` and use credentials that exist on the source database.
-
-**mysql CLI**
-
-```
-mysql -h 127.0.0.1 -P 3306 -u <your-user> -p<password> <your-database>
-```
-
-**Go (`database/sql`)**
-
-```go
-import _ "github.com/go-sql-driver/mysql"
-
-db, err := sql.Open("mysql", "<your-user>:<password>@tcp(127.0.0.1:3306)/<your-database>")
-```
-
-**Python**
-
-```python
-import mysql.connector
-conn = mysql.connector.connect(
-    host="127.0.0.1", port=3306,
-    user="<your-user>", password="<password>",
-    database="<your-database>"
-)
-```
-
-**Connection notes**
-
-- The database name must match `VDB_DB_NAME`.
-- TLS is not supported on the vdb-mysql listener. Disable SSL in your client if it is enabled by default.
-- Only TCP connections are accepted — no Unix socket.
-
----
-
-## Source Database Setup
-
-### Service account (vdb-mysql → source)
-
-Before running vdb-mysql, create a dedicated read-only MySQL account for it on your source database. This account is used only by vdb-mysql to read schema metadata and row data. Granting `SELECT` only enforces at the database layer that vdb-mysql can never write to the source, regardless of what any plugin does.
+**1. Create a read-only service account on your source database**
 
 ```sql
 CREATE USER IF NOT EXISTS 'vdb_user'@'%' IDENTIFIED BY '<password>';
@@ -143,82 +27,79 @@ GRANT SELECT ON <your_database>.* TO 'vdb_user'@'%';
 FLUSH PRIVILEGES;
 ```
 
-Use the credentials from this account in `VDB_SOURCE_DSN`. Your application users on the source database do not need to change — vdb-mysql proxies the authentication handshake to the source on every client connection and does not maintain its own user list.
+**2. Run vdb-mysql**
 
-### Network access
+```sh
+export VDB_SOURCE_DSN="vdb_user:secret@tcp(db.internal:3306)/myapp"
+export VDB_AUTH_SOURCE_ADDR="db.internal:3306"
+export VDB_DB_NAME="myapp"
 
-vdb-mysql opens two types of connections to the source:
+./vdb-mysql
+```
 
-- **Auth probe**: one short-lived TCP connection per client connection, used to verify credentials during the MySQL handshake, closed immediately after.
-- **Data pool**: a persistent connection pool used to query `INFORMATION_SCHEMA` and fetch row data.
+**3. Connect your application**
 
-Both use the same host — `VDB_AUTH_SOURCE_ADDR` and `VDB_SOURCE_DSN` should point to the same MySQL server.
+Point your app at vdb-mysql exactly as you would a normal MySQL server. Use the same credentials you already use — vdb-mysql proxies authentication to the source on every connection.
+
+```sh
+mysql -h 127.0.0.1 -P 3306 -u myuser -pmypassword myapp
+```
+
+---
+
+## Installation
+
+| Method | Instructions |
+|---|---|
+| Pre-built binary (linux/amd64) | [Download from Releases](https://github.com/virtual-db/mysql/releases) |
+| Docker | [Building a Docker image](docs/installation.md#docker) |
+| Build from source | [Build instructions](docs/installation.md#build-from-source) |
 
 ---
 
 ## Configuration
 
-vdb-mysql is configured entirely through environment variables. There are no config files.
+vdb-mysql is configured entirely through environment variables — no config files.
 
-| Variable | Default | Required | Description |
+| Variable | Required | Default | Description |
 |---|---|---|---|
-| `VDB_LISTEN_ADDR` | `:3306` | No | TCP address and port to listen on. |
-| `VDB_DB_NAME` | `appdb` | No | Database name exposed to clients. Must match the source. |
-| `VDB_SOURCE_DSN` | _(empty)_ | **Yes** | DSN for the source MySQL server: `user:password@tcp(host:port)/dbname` |
-| `VDB_AUTH_SOURCE_ADDR` | _(empty)_ | **Yes** | `host:port` of the source MySQL server, used for the auth proxy handshake. |
-| `VDB_PLUGIN_DIR` | `plugins` | No | Directory containing plugin subdirectories. Leave empty to run without plugins. |
-
----
-
-## How It Works
-
-When a client connects to vdb-mysql:
-
-1. **Authentication** — vdb-mysql opens a short-lived connection to the real MySQL source and replays the MySQL handshake byte-for-byte. The source validates the credentials. vdb-mysql never stores or evaluates credentials itself.
-2. **Query execution** — SQL is parsed and planned by the embedded [go-mysql-server](https://github.com/dolthub/go-mysql-server) engine.
-3. **Reads** — rows are fetched from the source, passed through the plugin layer, and returned to the client.
-4. **Writes** — each affected row is delivered to plugins. No write reaches the source database.
+| `VDB_SOURCE_DSN` | **Yes** | — | DSN for the source MySQL server |
+| `VDB_AUTH_SOURCE_ADDR` | **Yes** | — | `host:port` used for auth probes |
+| `VDB_LISTEN_ADDR` | No | `:3306` | Address vdb-mysql listens on |
+| `VDB_DB_NAME` | No | `appdb` | Database name exposed to clients |
+| `VDB_PLUGIN_DIR` | No | `plugins` | Directory containing plugin subdirectories |
+| `VDB_TLS_CERT_FILE` | No | — | PEM certificate path (enables TLS) |
+| `VDB_TLS_KEY_FILE` | No | — | PEM private key path (required with cert) |
 
 ---
 
 ## Plugins
 
-Plugins are standalone executables that extend vdb-mysql behaviour. They run as child processes and communicate with the framework over a Unix socket using JSON-RPC 2.0.
+Plugins are standalone executables that vdb-mysql launches at startup. They attach handlers to pipeline points and subscribe to events — giving them the ability to transform rows, intercept queries, or observe writes.
 
-### Directory layout
+Each plugin lives in its own subdirectory under `VDB_PLUGIN_DIR` and declares itself via a `manifest.json` or `manifest.yaml`.
 
-Set `VDB_PLUGIN_DIR` to a directory containing one subdirectory per plugin:
+→ [Plugin development guide](docs/plugins.md)  
+→ [Pipelines and events reference](docs/pipelines.md)
 
-```
-/etc/vdb/plugins/
-  my-plugin/
-    manifest.json
-    my-plugin        # the plugin executable
-```
+---
 
-### manifest.json
+## Further Reading
 
-```json
-{
-  "name":    "my-plugin",
-  "version": "1.0.0",
-  "command": ["./my-plugin"],
-  "env": {
-    "MY_PLUGIN_CONFIG": "/etc/my-plugin/config.json"
-  }
-}
-```
+- [How vdb-mysql works](docs/how-it-works.md)
+- [Installation](docs/installation.md)
+- [TLS configuration](docs/tls.md)
+- [Plugin development](docs/plugins.md)
+- [Pipelines and events reference](docs/pipelines.md)
+- [Known limitations](docs/limitations.md)
 
-| Field | Type | Description |
-|---|---|---|
-| `name` | string | Plugin identifier used in logs. Defaults to the directory name if omitted. |
-| `version` | string | Informational only. Appears in startup logs. |
-| `command` | []string | Command and arguments to launch the plugin. Working directory is the plugin subdirectory. |
-| `env` | object | Additional environment variables passed to the plugin process. |
+---
 
-On startup, vdb-mysql scans `VDB_PLUGIN_DIR`, launches each plugin, and waits up to 10 seconds for it to connect and send a `declare` notification registering its pipeline handlers and event subscriptions. Plugins that fail to start or declare in time are logged and skipped.
+## Contributing
 
-Plugin development documentation and the JSON-RPC protocol specification are maintained in the [vdb-core](https://github.com/virtual-db/vdb-core) repository.
+Public contributions are not yet open. Open a [GitHub Issue](https://github.com/virtual-db/mysql/issues) to report bugs, request features, or start a discussion.
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) for repository structure and where different concerns live.
 
 ---
 
@@ -226,4 +107,4 @@ Plugin development documentation and the JSON-RPC protocol specification are mai
 
 Elastic License 2.0. See [LICENSE.md](LICENSE.md).
 
-The EL v2 license allows free use, modification, and redistribution for any purpose that does not involve offering the software as a hosted or managed service to third parties. See [CLA.md](CLA.md) for contributor requirements.
+You can run vdb-mysql for any purpose, including commercially. You may not offer it as a hosted or managed service to third parties.

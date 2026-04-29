@@ -29,7 +29,7 @@ RUN go mod download
 # Copy source and build the binary.
 COPY . .
 
-RUN CGO_ENABLED=0 GOOS=linux go build -trimpath -o /out/vdb-mysql .
+RUN CGO_ENABLED=0 go build -trimpath -o /out/vdb-mysql .
 
 # -----------------------------------------------------------------------------
 # Stage 2: runtime

@@ -6,8 +6,8 @@ import (
 	"log"
 	"os"
 
-	core "github.com/virtual-db/core"
-	mysqldriver "github.com/virtual-db/mysql-driver"
+	core "github.com/virtual-db/vdb-core"
+	mysqldriver "github.com/virtual-db/vdb-mysql-driver"
 )
 
 func main() {

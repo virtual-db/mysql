@@ -12,6 +12,7 @@
 /dist/
 /bin/
 vdb-mysql
+^mysql$
 
 # Dependency directories
 vendor/

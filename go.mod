@@ -1,10 +1,10 @@
-module github.com/virtual-db/mysql
+module github.com/virtual-db/vdb-mysql
 
 go 1.23.3
 
 require (
-	github.com/virtual-db/core v0.0.1-alpha.4
-	github.com/virtual-db/mysql-driver v0.0.1-alpha.4
+	github.com/virtual-db/vdb-core v0.0.1-alpha.6
+	github.com/virtual-db/vdb-mysql-driver v0.0.1-alpha.6
 )
 
 require (

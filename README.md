@@ -1,10 +1,14 @@
 # vdb-mysql
 
+[![Release](https://img.shields.io/github/v/release/virtual-db/vdb-mysql?include_prereleases&label=version&color=blue)](https://github.com/virtual-db/vdb-mysql/releases/latest)
+[![CI](https://github.com/virtual-db/vdb-mysql/actions/workflows/ci.yml/badge.svg)](https://github.com/virtual-db/vdb-mysql/actions/workflows/ci.yml)
+[![License: ELv2](https://img.shields.io/badge/license-ELv2-lightgrey)](LICENSE.md)
+
 **VirtualDB** is a MySQL-compatible proxy that sits between your application and your MySQL database. It intercepts every query and write, routes them through a programmable plugin layer, and returns results — without ever modifying the source.
 
 Reads come from your real database. Writes are captured in an in-memory delta and reflected back to your application. **Nothing is written to the source.**
 
-> **Status**: Early alpha (`v0.0.1-alpha`). Not recommended for production without a thorough evaluation. See [Known Limitations](docs/known-limitations.md).
+> **Status**: Early alpha. Not recommended for production without a thorough evaluation. See [Known Limitations](docs/known-limitations.md).
 
 ---
 
@@ -51,8 +55,8 @@ mysql -h 127.0.0.1 -P 3306 -u myuser -pmypassword myapp
 
 | Method | Instructions |
 |---|---|
-| Pre-built binary (linux/amd64) | [Download from Releases](https://github.com/virtual-db/mysql/releases) |
-| Docker (official image) | `docker pull ghcr.io/virtual-db/mysql:latest` — see [Docker usage](docs/installation.md#docker) |
+| Pre-built binary (linux/amd64) | [Download from Releases](https://github.com/virtual-db/vdb-mysql/releases) |
+| Docker (official image) | `docker pull ghcr.io/virtual-db/vdb-mysql:latest` — see [Docker usage](docs/installation.md#docker) |
 | Build from source | [Build instructions](docs/installation.md#build-from-source) |
 
 ---
@@ -97,7 +101,7 @@ Each plugin lives in its own subdirectory under `VDB_PLUGIN_DIR` and declares it
 
 ## Contributing
 
-Public contributions are not yet open. Open a [GitHub Issue](https://github.com/virtual-db/mysql/issues) to report bugs, request features, or start a discussion.
+Public contributions are not yet open. Open a [GitHub Issue](https://github.com/virtual-db/vdb-mysql/issues) to report bugs, request features, or start a discussion.
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for repository structure and where different concerns live.
 

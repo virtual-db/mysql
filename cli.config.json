@@ -1,0 +1,8 @@
+{
+  "publish": {
+    "image": "virtual-db/vdb-mysql",
+    "category": "proxy",
+    "displayName": "VirtualDB MySQL",
+    "description": "VirtualDB proxy for MySQL-compatible databases"
+  }
+}
